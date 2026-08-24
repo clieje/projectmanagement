@@ -106,6 +106,23 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .rush-btn.actief{border-color:var(--light);background:rgba(255,255,255,.05)}
 .rush-btn .rush-titel{font-size:13px}
 .rush-toeslag{font-size:11px;color:var(--grey)}
+/* Naam invoer */
+.naam-wrap{margin-bottom:16px}
+.naam-wrap label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);display:block;margin-bottom:8px}
+.naam-input{width:100%;background:none;border:1px solid var(--line);border-radius:10px;color:var(--light);font:inherit;font-size:15px;padding:13px 14px;transition:border-color .2s var(--ease);outline:none;box-sizing:border-box}
+.naam-input::placeholder{color:var(--grey)}
+.naam-input:focus{border-color:var(--grey)}
+.naam-btns{display:flex;gap:10px;margin-top:10px}
+.naam-btns button{flex:1;padding:14px 12px;border-radius:10px;font:inherit;font-size:15px;cursor:pointer;border:none;transition:background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease)}
+/* Klaar samenvatting */
+.klaar-samenvatting{margin-top:20px;border-top:1px solid var(--line);padding-top:14px}
+.klaar-sum-rij{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:14px;border-bottom:1px solid var(--line)}
+.klaar-sum-rij:last-child{border-bottom:none}
+.klaar-sum-rij dt{color:var(--grey);flex-shrink:0}
+.klaar-sum-rij dd{color:var(--light);text-align:right;font-variant-numeric:tabular-nums}
+.klaar-werklist{list-style:none;margin:0 0 14px;padding:0;border-bottom:1px solid var(--line);padding-bottom:4px}
+.klaar-werklist li{font-size:13px;color:var(--grey);padding:5px 0;display:flex;gap:8px;line-height:1.4}
+.klaar-werklist li::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--grey);flex-shrink:0;margin-top:6px}
 @media(max-width:600px){
   body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
   .sheet{padding:24px 20px}
@@ -194,7 +211,15 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
         <span>Datum oplevering</span><span id="datum"></span>
       </div>
       <div class="vergelijking" id="vergelijking" style="display:none"></div>
-      <div class="acties">
+      <div class="naam-wrap" id="naamWrap" style="display:none">
+        <label for="naamInput">Jouw naam</label>
+        <input class="naam-input" id="naamInput" type="text" placeholder="Voor- en achternaam" autocomplete="name">
+        <div class="naam-btns">
+          <button type="button" class="nee" id="naamTerug" style="border:1px solid var(--line)">Terug</button>
+          <button type="button" class="ja" id="naamBevestig" style="border:1px solid var(--light)">Bevestigen</button>
+        </div>
+      </div>
+      <div class="acties" id="actiesWrap">
         <button type="button" class="nee" id="nee">Niet nu</button>
         <button type="button" class="ja"  id="ja">Goedkeuren</button>
       </div>
@@ -227,6 +252,7 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       <h2 id="klaarH2" style="display:none"><span class="stip" id="stip"></span><span id="klaarTitel"></span></h2>
       <p id="klaarTekst"></p>
       <button type="button" class="terug" id="terug">Opnieuw bekijken</button>
+      <div class="klaar-samenvatting" id="klaarSamenvatting" style="display:none"></div>
     </div>
   </div>
 
@@ -245,6 +271,8 @@ let huidigDatum = null;
 let huidigDatumOrigineel = null;
 let huidigPrijsRaw = null;
 let huidigRush = null;
+let huidigData = null;
+let huidigNaam = '';
 
 const MAANDEN = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 function parseDatumNL(s) {
@@ -322,6 +350,7 @@ async function laadVoorstel() {
 }
 
 function renderVoorstel(p) {
+  huidigData = p.task_data;
   const d = p.task_data;
   document.title = `Aanvraag ${d.number || ''} — Clience`;
 
@@ -461,7 +490,7 @@ async function afronden(soort) {
     const tijd  = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
     el('klaarDatumTijd').textContent = datum + ' om ' + tijd;
     if (huidigDatum) {
-      el('klaarOpleverdatum').textContent = 'Live op ' + huidigDatum;
+      el('klaarOpleverdatum').textContent = 'Opleverdatum: ' + huidigDatum;
       el('klaarOpleverdatum').style.display = '';
     } else {
       el('klaarOpleverdatum').style.display = 'none';
@@ -470,6 +499,7 @@ async function afronden(soort) {
     el('klaarH2').style.display = 'none';
     el('klaarTekst').textContent = 'Bedankt voor de opdracht. Wij zullen deze direct inplannen.';
     el('klaarTekst').style.display = '';
+    renderKlaarSamenvatting();
   } else {
     el('stip').className = 'stip grijs';
     el('klaarTitel').textContent = 'Niet nu';
@@ -488,19 +518,84 @@ function reset() {
   el('klaarBanner').style.display = 'none';
   el('klaarH2').style.display = 'none';
   el('klaarTekst').style.display = '';
+  el('klaarSamenvatting').style.display = 'none';
+  el('naamWrap').style.display = 'none';
+  el('actiesWrap').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
+  el('naamBevestig').disabled = el('naamTerug').disabled = false;
   document.querySelectorAll('.rush-btn').forEach(b => { b.disabled = false; b.classList.remove('actief'); });
   const rushStd = document.getElementById('rushStd');
   if (rushStd) rushStd.classList.add('actief');
   huidigRush = null;
+  huidigNaam = '';
+}
+
+function renderKlaarSamenvatting() {
+  const d = huidigData;
+  if (!d) return;
+  const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
+  let html = '';
+  if (items.length) {
+    html += '<p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:8px">Werkzaamheden</p>';
+    html += '<ul class="klaar-werklist">';
+    html += items.map(i => '<li>' + escHtml(typeof i === 'string' ? i : i.text) + '</li>').join('');
+    html += '</ul>';
+  }
+  html += '<dl>';
+  const prijsTxt = el('prijs').textContent;
+  if (prijsTxt) {
+    html += '<div class="klaar-sum-rij"><dt>Bedrag</dt><dd>' + escHtml(prijsTxt)
+      + '<br><span style="font-size:11px;color:var(--grey)">Exclusief btw</span></dd></div>';
+  }
+  if (huidigRush) {
+    html += '<div class="klaar-sum-rij"><dt>Levertijd</dt><dd>' + escHtml(huidigRush) + '</dd></div>';
+  }
+  const opleverdatum = huidigDatum;
+  if (opleverdatum && !huidigRush) {
+    html += '<div class="klaar-sum-rij"><dt>Opleverdatum</dt><dd>' + escHtml(opleverdatum) + '</dd></div>';
+  }
+  if (huidigNaam) {
+    html += '<div class="klaar-sum-rij"><dt>Akkoord door</dt><dd>' + escHtml(huidigNaam) + '</dd></div>';
+  }
+  html += '</dl>';
+  const sam = el('klaarSamenvatting');
+  sam.innerHTML = html;
+  sam.style.display = '';
 }
 
 function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-el('ja').addEventListener('click',   () => afronden('ja'));
-el('nee').addEventListener('click',  () => afronden('nee'));
+el('ja').addEventListener('click', () => {
+  el('naamInput').value = localStorage.getItem('clience-naam') || '';
+  el('actiesWrap').style.display = 'none';
+  el('naamWrap').style.display = '';
+  setTimeout(() => {
+    el('naamInput').focus();
+    el('naamInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+});
+el('nee').addEventListener('click', () => afronden('nee'));
+el('naamTerug').addEventListener('click', () => {
+  el('naamWrap').style.display = 'none';
+  el('actiesWrap').style.display = '';
+});
+el('naamBevestig').addEventListener('click', () => {
+  const naam = el('naamInput').value.trim();
+  if (!naam) {
+    el('naamInput').style.borderColor = 'var(--green)';
+    el('naamInput').focus();
+    return;
+  }
+  el('naamInput').style.borderColor = '';
+  localStorage.setItem('clience-naam', naam);
+  huidigNaam = naam;
+  afronden('ja');
+});
+el('naamInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') el('naamBevestig').click();
+});
 el('terug').addEventListener('click', reset);
 
 laadVoorstel();
