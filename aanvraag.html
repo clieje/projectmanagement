@@ -257,16 +257,18 @@ function parseDatumNL(s) {
   const jaar = parts[2] ? parseInt(parts[2]) : new Date().getFullYear();
   return new Date(jaar, mIdx, dag);
 }
+const DAGEN_AFG = ['zo','ma','di','wo','do','vr','za'];
 function datumMetCountdown(s) {
-  if (!s) return s;
+  if (!s) return escHtml(s||'');
   const d = parseDatumNL(s);
-  if (!d) return s;
+  if (!d) return escHtml(s);
+  const dagStr = DAGEN_AFG[d.getDay()] + ' ' + s;
   const today = new Date(); today.setHours(0,0,0,0);
   const diff = Math.round((d - today) / 86400000);
-  if (diff < 0)   return s;
-  if (diff === 0) return s + ' · vandaag';
-  if (diff === 1) return s + ' · morgen';
-  return s + ' · over ' + diff + ' dagen';
+  if (diff <= 0) return escHtml(dagStr);
+  const countdown = diff === 1 ? 'morgen' : 'over ' + diff + ' dagen';
+  return '<span style="color:var(--grey);font-size:12px;margin-right:8px">' + countdown + '</span>'
+       + escHtml(dagStr);
 }
 
 function parsePrijs(raw) {
@@ -368,7 +370,7 @@ function renderVoorstel(p) {
     huidigVariant = 'los';
     el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.prijs);
-    if (d.datum) el('datum').textContent = datumMetCountdown(d.datum);
+    if (d.datum) el('datum').innerHTML = datumMetCountdown(d.datum);
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
       el('vergelijking').innerHTML     = d.vergelijking;
@@ -382,7 +384,7 @@ function renderVoorstel(p) {
     huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
     el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.creditPrijs || d.prijs);
-    if (d.datum) el('datum').textContent = datumMetCountdown(d.datum);
+    if (d.datum) el('datum').innerHTML = datumMetCountdown(d.datum);
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
       el('vergelijking').innerHTML     = d.vergelijking;
@@ -418,7 +420,7 @@ function kiesRush(tier, btn) {
   if (tier === 'std') {
     if (huidigPrijsRaw) el('prijs').textContent = formatPrijs(String(huidigPrijsRaw));
     if (huidigDatumOrigineel) {
-      el('datum').textContent = datumMetCountdown(huidigDatumOrigineel);
+      el('datum').innerHTML = datumMetCountdown(huidigDatumOrigineel);
       el('datumRij').style.display = '';
     } else {
       el('datumRij').style.display = 'none';
