@@ -27,7 +27,7 @@ body{
   padding:32px;
 }
 .top{
-  display:flex; justify-content:space-between; align-items:center;
+  display:flex; justify-content:space-between; align-items:flex-start;
   font-size:13px; color:var(--grey); margin-bottom:36px;
 }
 .logo{font-family:var(--f-disp);color:var(--light);letter-spacing:-.01em;font-weight:500}
@@ -155,6 +155,7 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
         <div class="row"><dt id="prijsLabel">Prijs</dt><dd id="prijs"></dd></div>
         <div class="row" id="datumRij"><dt>Live op</dt><dd id="datum"></dd></div>
       </dl>
+      <p style="font-size:11px;color:var(--grey);margin-top:-8px;margin-bottom:20px">Prijzen zijn exclusief btw</p>
       <div class="vergelijking" id="vergelijking" style="display:none"></div>
       <div class="acties">
         <button type="button" class="nee" id="nee">Niet nu</button>
@@ -165,8 +166,9 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 
     <div class="klaar" id="klaar">
       <div id="klaarBanner" style="display:none;background:var(--green);border-radius:10px;padding:18px 20px;margin-bottom:20px">
-        <div style="font-family:var(--f-disp);font-size:18px;font-weight:500;letter-spacing:-.02em;color:#fff;margin-bottom:4px">Akkoord ✓</div>
+        <div style="font-family:var(--f-disp);font-size:18px;font-weight:500;letter-spacing:-.02em;color:#fff;margin-bottom:4px">Akkoord</div>
         <div id="klaarDatumTijd" style="font-size:13px;color:rgba(255,255,255,.8)"></div>
+        <div id="klaarOpleverdatum" style="display:none;font-size:13px;color:rgba(255,255,255,.8);margin-top:2px"></div>
       </div>
       <h2 id="klaarH2" style="display:none"><span class="stip" id="stip"></span><span id="klaarTitel"></span></h2>
       <p id="klaarTekst"></p>
@@ -185,6 +187,14 @@ const el = id => document.getElementById(id);
 const sheet = el('sheet');
 let huidigToken = null;
 let huidigVariant = 'los';
+let huidigDatum = null;
+
+function formatPrijs(raw) {
+  if (!raw) return '';
+  const n = parseFloat((raw+'').replace(/[^0-9.,]/g,'').replace(',','.'));
+  if (isNaN(n)) return raw;
+  return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 function showView(name) {
   ['loadingView','errorView','eerderView','mainView'].forEach(v =>
@@ -222,6 +232,7 @@ function renderVoorstel(p) {
   el('aanvraagNr').textContent  = `Aanvraag ${d.number || ''}`;
   el('voor').textContent        = `Voor ${d.clientName || ''}`;
   el('titel').textContent       = d.title || '';
+  huidigDatum = d.datum || null;
 
   // Client logo
   if (d.clientLogo) {
@@ -239,7 +250,7 @@ function renderVoorstel(p) {
       const price = typeof i === 'object' && i.price ? i.price : null;
       return `<li>
         <span style="flex:1">${escHtml(text)}</span>
-        ${hasPrices && price ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(price)}</span>` : hasPrices ? `<span style="color:var(--line)">—</span>` : ''}
+        ${hasPrices && price ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : hasPrices ? `<span style="color:var(--line)">—</span>` : ''}
       </li>`;
     }).join('');
     el('werkLabel').style.display = '';
@@ -251,7 +262,7 @@ function renderVoorstel(p) {
   if (!sla) {
     huidigVariant = 'los';
     el('prijsLabel').textContent = 'Prijs';
-    el('prijs').textContent      = d.prijs || '';
+    el('prijs').textContent      = formatPrijs(d.prijs);
     if (d.datum) el('datum').textContent = d.datum;
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
@@ -265,7 +276,7 @@ function renderVoorstel(p) {
   } else {
     huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
     el('prijsLabel').textContent = 'Kosten';
-    el('prijs').textContent      = d.creditPrijs || d.prijs || '';
+    el('prijs').textContent      = formatPrijs(d.creditPrijs || d.prijs);
     if (d.datum) el('datum').textContent = d.datum;
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
@@ -310,14 +321,22 @@ async function afronden(soort) {
     const datum = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
     const tijd  = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
     el('klaarDatumTijd').textContent = datum + ' om ' + tijd;
+    if (huidigDatum) {
+      el('klaarOpleverdatum').textContent = 'Live op ' + huidigDatum;
+      el('klaarOpleverdatum').style.display = '';
+    } else {
+      el('klaarOpleverdatum').style.display = 'none';
+    }
     el('klaarBanner').style.display = '';
     el('klaarH2').style.display = 'none';
-    el('klaarTekst').textContent = goedTekst();
+    el('klaarTekst').style.display = 'none';
+    el('klaarTekst').textContent = '';
   } else {
     el('stip').className = 'stip grijs';
     el('klaarTitel').textContent = 'Niet nu';
     el('klaarBanner').style.display = 'none';
     el('klaarH2').style.display = '';
+    el('klaarTekst').style.display = '';
     el('klaarTekst').textContent = 'Helder, ik laat het liggen. Wil je het later toch, stuur me dan een bericht — dan kijk ik opnieuw naar de planning.';
   }
   sheet.classList.add('afgerond');
@@ -329,6 +348,7 @@ function reset() {
   el('klaar').classList.remove('actief');
   el('klaarBanner').style.display = 'none';
   el('klaarH2').style.display = 'none';
+  el('klaarTekst').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
 }
 
