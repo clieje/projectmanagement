@@ -89,8 +89,10 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .terug:hover{color:var(--light)}
 /* Loading / error */
 .laad{padding:40px 0;font-size:14px;color:var(--grey)}
+/* Omschrijving */
+.omschrijving{font-size:14px;color:var(--grey);line-height:1.6;margin-top:-14px;margin-bottom:24px}
 /* Rush */
-.rush-sectie{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.rush-sectie{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
 .rush-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:8px}
 .rush-knoppen{display:flex;gap:8px}
 .rush-btn{
@@ -100,6 +102,7 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
   transition:border-color .2s var(--ease),background .2s var(--ease);
 }
 .rush-btn:hover{border-color:var(--grey)}
+.rush-btn.actief{border-color:var(--light);background:rgba(255,255,255,.05)}
 .rush-btn .rush-titel{font-size:13px}
 .rush-toeslag{font-size:11px;color:var(--grey)}
 @media(max-width:520px){
@@ -169,10 +172,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       </div>
       <p class="voor" id="voor"></p>
       <h1 class="titel" id="titel"></h1>
+      <p class="omschrijving" id="omschrijving" style="display:none"></p>
       <p class="sectie-label" id="werkLabel" style="display:none">Werkzaamheden</p>
       <ul class="werk" id="werk" style="display:none"></ul>
       <dl class="rows">
-        <div class="row"><dt id="prijsLabel">Prijs</dt><dd id="prijs"></dd></div>
+        <div class="row"><dt id="prijsLabel">Bedrag</dt><dd id="prijs"></dd></div>
       </dl>
       <div class="datum-balk" id="datumRij">
         <span>Datum oplevering</span><span id="datum"></span>
@@ -187,11 +191,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       <div class="rush-sectie" id="rushSectie">
         <div class="rush-label">Sneller nodig?</div>
         <div class="rush-knoppen">
-          <button type="button" class="rush-btn" onclick="kiesRush('3d')">
+          <button type="button" class="rush-btn" onclick="kiesRush('3d', this)">
             <span class="rush-titel">Binnen 3 dagen</span>
             <span class="rush-toeslag">+50% toeslag</span>
           </button>
-          <button type="button" class="rush-btn" onclick="kiesRush('24u')">
+          <button type="button" class="rush-btn" onclick="kiesRush('24u', this)">
             <span class="rush-titel">Binnen 24 uur</span>
             <span class="rush-toeslag">+100% toeslag</span>
           </button>
@@ -224,12 +228,27 @@ let huidigToken = null;
 let huidigVariant = 'los';
 let huidigDatum = null;
 let huidigPrijsRaw = null;
+let huidigRush = null;
+
+function parsePrijs(raw) {
+  let s = (raw+'').replace(/[€\s]/g,'');
+  if (s.includes(',') && s.includes('.')) {
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if (s.includes(',')) {
+    s = s.replace(',','.');
+  } else if (s.includes('.')) {
+    const parts = s.split('.');
+    if (parts.length === 2 && parts[1].length === 3)
+      s = parts.join('');
+  }
+  return parseFloat(s);
+}
 
 function formatPrijs(raw) {
   if (!raw) return '';
-  const n = parseFloat((raw+'').replace(/[^0-9.,]/g,'').replace(',','.'));
-  if (isNaN(n)) return raw;
-  return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const n = parsePrijs(raw);
+  if (isNaN(n)) return raw+'';
+  return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function showView(name) {
@@ -269,8 +288,15 @@ function renderVoorstel(p) {
   el('voor').textContent        = `Voor ${d.clientName || ''}`;
   el('titel').textContent       = d.title || '';
   huidigDatum = d.datum || null;
-  const rawVal = parseFloat((d.prijs+'').replace(/[^0-9.,]/g,'').replace(',','.'));
+  huidigRush = null;
+  const rawVal = parsePrijs(d.prijs || d.creditPrijs || '');
   huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
+  if (d.description) {
+    el('omschrijving').textContent = d.description;
+    el('omschrijving').style.display = '';
+  } else {
+    el('omschrijving').style.display = 'none';
+  }
 
   // Client logo
   if (d.clientLogo) {
@@ -299,7 +325,7 @@ function renderVoorstel(p) {
   const sla = d.sla;
   if (!sla) {
     huidigVariant = 'los';
-    el('prijsLabel').textContent = 'Prijs';
+    el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.prijs);
     if (d.datum) el('datum').textContent = d.datum;
     else el('datumRij').style.display = 'none';
@@ -313,7 +339,7 @@ function renderVoorstel(p) {
     }
   } else {
     huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
-    el('prijsLabel').textContent = 'Kosten';
+    el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.creditPrijs || d.prijs);
     if (d.datum) el('datum').textContent = d.datum;
     else el('datumRij').style.display = 'none';
@@ -344,10 +370,13 @@ function goedTekst() {
   return 'Ik heb het ingepland. Je hoort het van me zodra het live staat.';
 }
 
-function kiesRush(tier) {
+function kiesRush(tier, btn) {
   const multiplier = tier === '3d' ? 1.5 : 2.0;
   const label      = tier === '3d' ? 'Binnen 3 werkdagen' : 'Binnen 24 uur';
   const toeslag    = tier === '3d' ? '50%' : '100%';
+
+  document.querySelectorAll('.rush-btn').forEach(b => b.classList.remove('actief'));
+  if (btn) btn.classList.add('actief');
 
   if (huidigPrijsRaw) {
     el('prijs').textContent = formatPrijs(String(huidigPrijsRaw * multiplier));
@@ -355,15 +384,10 @@ function kiesRush(tier) {
   el('datum').textContent = label;
   el('datumRij').style.display = '';
   huidigDatum = label;
-
-  // Gebruik de bevestigingstekst als basis voor de rush-notitie
-  el('ja').disabled = el('nee').disabled = true;
-  document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
-
-  afronden('ja', `Rush ${toeslag} — ${label}`);
+  huidigRush = `Rush ${toeslag} — ${label}`;
 }
 
-async function afronden(soort, rushNotitie = null) {
+async function afronden(soort) {
   el('ja').disabled = el('nee').disabled = true;
   document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
   const url = `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`;
@@ -371,8 +395,8 @@ async function afronden(soort, rushNotitie = null) {
     await fetch(url, { method: 'PATCH', headers: HEADERS,
       body: JSON.stringify({ status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() }) });
   } catch(e) { /* toon toch de bevestiging */ }
-  if (rushNotitie) {
-    try { await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ rush: rushNotitie }) }); }
+  if (soort === 'ja' && huidigRush) {
+    try { await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ rush: huidigRush }) }); }
     catch(e) {}
   }
 
@@ -410,7 +434,8 @@ function reset() {
   el('klaarH2').style.display = 'none';
   el('klaarTekst').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
-  document.querySelectorAll('.rush-btn').forEach(b => b.disabled = false);
+  document.querySelectorAll('.rush-btn').forEach(b => { b.disabled = false; b.classList.remove('actief'); });
+  huidigRush = null;
 }
 
 function escHtml(s) {
