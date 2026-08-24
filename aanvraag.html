@@ -47,9 +47,16 @@ body{
   content:'';width:4px;height:4px;border-radius:50%;
   background:var(--grey);flex-shrink:0;margin-top:7px;
 }
-.rows{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;margin-bottom:20px}
+.rows{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;margin-bottom:10px}
 .row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:15px}
 .row dt{color:var(--grey)} .row dd{color:var(--light);font-variant-numeric:tabular-nums}
+.datum-balk{
+  display:flex;justify-content:space-between;align-items:center;
+  border:1px solid var(--line);border-radius:8px;padding:10px 14px;
+  font-size:14px;margin-bottom:6px;
+}
+.datum-balk span:first-child{color:var(--grey)}
+.datum-balk span:last-child{color:var(--light);font-variant-numeric:tabular-nums}
 .vergelijking{
   background:var(--dark);border-radius:10px;padding:14px 16px;
   margin-bottom:28px;font-size:14px;color:var(--grey);line-height:1.55;
@@ -153,9 +160,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       <ul class="werk" id="werk" style="display:none"></ul>
       <dl class="rows">
         <div class="row"><dt id="prijsLabel">Prijs</dt><dd id="prijs"></dd></div>
-        <div class="row" id="datumRij"><dt>Live op</dt><dd id="datum"></dd></div>
       </dl>
-      <p style="font-size:11px;color:var(--grey);margin-top:-8px;margin-bottom:20px">Prijzen zijn exclusief btw</p>
+      <div class="datum-balk" id="datumRij">
+        <span>Live op</span><span id="datum"></span>
+      </div>
+      <p style="font-size:11px;color:var(--grey);margin-bottom:20px">Prijzen zijn exclusief btw</p>
       <div class="vergelijking" id="vergelijking" style="display:none"></div>
       <div class="acties">
         <button type="button" class="nee" id="nee">Niet nu</button>
@@ -329,8 +338,8 @@ async function afronden(soort) {
     }
     el('klaarBanner').style.display = '';
     el('klaarH2').style.display = 'none';
-    el('klaarTekst').style.display = 'none';
-    el('klaarTekst').textContent = '';
+    el('klaarTekst').textContent = 'Bedankt voor de opdracht. Wij zullen deze direct inplannen.';
+    el('klaarTekst').style.display = '';
   } else {
     el('stip').className = 'stip grijs';
     el('klaarTitel').textContent = 'Niet nu';
