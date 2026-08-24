@@ -476,8 +476,9 @@ async function afronden(soort) {
   document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
   const url = `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`;
   try {
-    await fetch(url, { method: 'PATCH', headers: HEADERS,
-      body: JSON.stringify({ status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() }) });
+    const patchBody = { status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() };
+    if (soort === 'ja' && huidigNaam) patchBody.respondent_name = huidigNaam;
+    await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(patchBody) });
   } catch(e) { /* toon toch de bevestiging */ }
   if (soort === 'ja' && huidigRush) {
     try { await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ rush: huidigRush }) }); }
@@ -535,12 +536,23 @@ function renderKlaarSamenvatting() {
   if (!d) return;
   const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
   let html = '';
+
+  if (d.title) {
+    html += '<h2 style="font-family:var(--f-disp);font-size:18px;font-weight:500;letter-spacing:-.02em;color:var(--light);margin:0 0 8px;line-height:1.3">'
+      + escHtml(d.title) + '</h2>';
+  }
+  if (d.description) {
+    html += '<p style="font-size:14px;color:var(--grey);line-height:1.55;margin:0 0 14px">'
+      + escHtml(d.description) + '</p>';
+  }
+
   if (items.length) {
     html += '<p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:8px">Werkzaamheden</p>';
     html += '<ul class="klaar-werklist">';
     html += items.map(i => '<li>' + escHtml(typeof i === 'string' ? i : i.text) + '</li>').join('');
     html += '</ul>';
   }
+
   html += '<dl>';
   const prijsTxt = el('prijs').textContent;
   if (prijsTxt) {
@@ -551,13 +563,14 @@ function renderKlaarSamenvatting() {
     html += '<div class="klaar-sum-rij"><dt>Levertijd</dt><dd>' + escHtml(huidigRush) + '</dd></div>';
   }
   const opleverdatum = huidigDatum;
-  if (opleverdatum && !huidigRush) {
+  if (opleverdatum) {
     html += '<div class="klaar-sum-rij"><dt>Opleverdatum</dt><dd>' + escHtml(opleverdatum) + '</dd></div>';
   }
   if (huidigNaam) {
     html += '<div class="klaar-sum-rij"><dt>Akkoord door</dt><dd>' + escHtml(huidigNaam) + '</dd></div>';
   }
   html += '</dl>';
+
   const sam = el('klaarSamenvatting');
   sam.innerHTML = html;
   sam.style.display = '';
