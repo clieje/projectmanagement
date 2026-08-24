@@ -123,6 +123,9 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .klaar-werklist{list-style:none;margin:0 0 14px;padding:0;border-bottom:1px solid var(--line);padding-bottom:4px}
 .klaar-werklist li{font-size:13px;color:var(--grey);padding:5px 0;display:flex;gap:8px;line-height:1.4}
 .klaar-werklist li::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--grey);flex-shrink:0;margin-top:6px}
+.disclaimer{font-size:12px;color:var(--grey);margin:8px 0 0;line-height:1.5}
+.disclaimer a{color:var(--grey);text-underline-offset:3px;text-decoration:underline}
+.disclaimer a:hover{color:var(--light)}
 @media(max-width:600px){
   body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
   .sheet{padding:24px 20px}
@@ -165,6 +168,7 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
     <div class="klaar actief">
       <h2><span class="stip" id="eerderStip"></span><span id="eerderTitel"></span></h2>
       <p id="eerderTekst"></p>
+      <div id="eerderDetail" class="klaar-samenvatting" style="display:none"></div>
     </div>
   </div>
 
@@ -224,6 +228,8 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
         <button type="button" class="ja"  id="ja">Goedkeuren</button>
       </div>
       <p class="geldig" id="geldig" style="display:none"></p>
+      <p class="geldig" id="vervalTekst" style="display:none"></p>
+      <p class="disclaimer">Door akkoord te geven ga je akkoord met onze <a href="https://request.clience.nl/av.pdf" target="_blank" rel="noopener">algemene voorwaarden</a>.</p>
       <div class="rush-sectie" id="rushSectie">
         <div class="rush-label">Levertijd</div>
         <div class="rush-knoppen">
@@ -409,6 +415,13 @@ function renderVoorstel(p) {
       el('geldig').textContent     = d.geldig;
       el('geldig').style.display   = '';
     }
+    if (p.expires_at) {
+      const dagen = Math.ceil((new Date(p.expires_at) - Date.now()) / 86400000);
+      if (dagen > 0) {
+        el('vervalTekst').textContent = `Vervalt automatisch over ${dagen} dag${dagen === 1 ? '' : 'en'}`;
+        el('vervalTekst').style.display = '';
+      }
+    }
   } else {
     huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
     el('prijsLabel').textContent = 'Bedrag';
@@ -433,7 +446,34 @@ function renderEerder(p) {
   el('eerderTekst').textContent = goedgekeurd
     ? 'Bedankt — ik ga ermee aan de slag.'
     : 'Helder, ik laat het liggen. Stuur me een bericht als je het later toch wilt.';
+  renderEerderDetail(p);
   showView('eerderView');
+}
+
+function renderEerderDetail(p) {
+  const d = p.task_data;
+  const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
+  let html = '';
+  if (d.title) html += `<h2 style="font-family:var(--f-disp);font-size:18px;font-weight:500;letter-spacing:-.02em;color:var(--light);margin:0 0 6px">${escHtml(d.title)}</h2>`;
+  if (d.description) html += `<p style="font-size:14px;color:var(--grey);margin:0 0 16px;line-height:1.55">${escHtml(d.description)}</p>`;
+  if (items.length) {
+    html += '<ul class="klaar-werklist">';
+    html += items.map(i => {
+      const text = typeof i === 'string' ? i : i.text;
+      return `<li>${escHtml(text)}</li>`;
+    }).join('');
+    html += '</ul>';
+  }
+  html += '<dl>';
+  const prijsTxt = el('prijs') ? el('prijs').textContent : '';
+  if (prijsTxt) html += `<div class="klaar-sum-rij"><dt>Bedrag</dt><dd>${escHtml(prijsTxt)}<br><span style="font-size:11px;color:var(--grey)">Exclusief btw</span></dd></div>`;
+  if (p.rush) html += `<div class="klaar-sum-rij"><dt>Levertijd</dt><dd>${escHtml(p.rush)}</dd></div>`;
+  if (d.datum) html += `<div class="klaar-sum-rij"><dt>Opleverdatum</dt><dd>${escHtml(d.datum)}</dd></div>`;
+  if (p.respondent_name) html += `<div class="klaar-sum-rij"><dt>Akkoord door</dt><dd>${escHtml(p.respondent_name)}</dd></div>`;
+  html += '</dl>';
+  const det = el('eerderDetail');
+  det.innerHTML = html;
+  det.style.display = '';
 }
 
 function goedTekst() {
