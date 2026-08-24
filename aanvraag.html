@@ -366,14 +366,15 @@ function kiesRush(tier) {
 async function afronden(soort, rushNotitie = null) {
   el('ja').disabled = el('nee').disabled = true;
   document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
+  const url = `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`;
   try {
-    const body = { status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() };
-    if (rushNotitie) body.rush = rushNotitie;
-    await fetch(
-      `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`,
-      { method: 'PATCH', headers: HEADERS, body: JSON.stringify(body) }
-    );
+    await fetch(url, { method: 'PATCH', headers: HEADERS,
+      body: JSON.stringify({ status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() }) });
   } catch(e) { /* toon toch de bevestiging */ }
+  if (rushNotitie) {
+    try { await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ rush: rushNotitie }) }); }
+    catch(e) {}
+  }
 
   if (soort === 'ja') {
     const now = new Date();
