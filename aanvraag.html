@@ -89,6 +89,19 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .terug:hover{color:var(--light)}
 /* Loading / error */
 .laad{padding:40px 0;font-size:14px;color:var(--grey)}
+/* Rush */
+.rush-sectie{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.rush-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:8px}
+.rush-knoppen{display:flex;gap:8px}
+.rush-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:11px 8px;border-radius:10px;border:1px solid var(--line);
+  background:none;color:var(--light);font:inherit;cursor:pointer;
+  transition:border-color .2s var(--ease),background .2s var(--ease);
+}
+.rush-btn:hover{border-color:var(--grey)}
+.rush-btn .rush-titel{font-size:13px}
+.rush-toeslag{font-size:11px;color:var(--grey)}
 @media(max-width:520px){
   .sheet{padding:24px 20px} .titel{font-size:21px} .acties{flex-direction:column}
 }
@@ -162,7 +175,7 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
         <div class="row"><dt id="prijsLabel">Prijs</dt><dd id="prijs"></dd></div>
       </dl>
       <div class="datum-balk" id="datumRij">
-        <span>Live op</span><span id="datum"></span>
+        <span>Datum oplevering</span><span id="datum"></span>
       </div>
       <p style="font-size:11px;color:var(--grey);margin-bottom:20px">Prijzen zijn exclusief btw</p>
       <div class="vergelijking" id="vergelijking" style="display:none"></div>
@@ -171,6 +184,19 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
         <button type="button" class="ja"  id="ja">Goedkeuren</button>
       </div>
       <p class="geldig" id="geldig" style="display:none"></p>
+      <div class="rush-sectie" id="rushSectie">
+        <div class="rush-label">Sneller nodig?</div>
+        <div class="rush-knoppen">
+          <button type="button" class="rush-btn" onclick="kiesRush('3d')">
+            <span class="rush-titel">Binnen 3 dagen</span>
+            <span class="rush-toeslag">+50% toeslag</span>
+          </button>
+          <button type="button" class="rush-btn" onclick="kiesRush('24u')">
+            <span class="rush-titel">Binnen 24 uur</span>
+            <span class="rush-toeslag">+100% toeslag</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="klaar" id="klaar">
@@ -197,6 +223,7 @@ const sheet = el('sheet');
 let huidigToken = null;
 let huidigVariant = 'los';
 let huidigDatum = null;
+let huidigPrijsRaw = null;
 
 function formatPrijs(raw) {
   if (!raw) return '';
@@ -242,6 +269,8 @@ function renderVoorstel(p) {
   el('voor').textContent        = `Voor ${d.clientName || ''}`;
   el('titel').textContent       = d.title || '';
   huidigDatum = d.datum || null;
+  const rawVal = parseFloat((d.prijs+'').replace(/[^0-9.,]/g,'').replace(',','.'));
+  huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
 
   // Client logo
   if (d.clientLogo) {
@@ -315,13 +344,34 @@ function goedTekst() {
   return 'Ik heb het ingepland. Je hoort het van me zodra het live staat.';
 }
 
-async function afronden(soort) {
+function kiesRush(tier) {
+  const multiplier = tier === '3d' ? 1.5 : 2.0;
+  const label      = tier === '3d' ? 'Binnen 3 werkdagen' : 'Binnen 24 uur';
+  const toeslag    = tier === '3d' ? '50%' : '100%';
+
+  if (huidigPrijsRaw) {
+    el('prijs').textContent = formatPrijs(String(huidigPrijsRaw * multiplier));
+  }
+  el('datum').textContent = label;
+  el('datumRij').style.display = '';
+  huidigDatum = label;
+
+  // Gebruik de bevestigingstekst als basis voor de rush-notitie
   el('ja').disabled = el('nee').disabled = true;
+  document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
+
+  afronden('ja', `Rush ${toeslag} — ${label}`);
+}
+
+async function afronden(soort, rushNotitie = null) {
+  el('ja').disabled = el('nee').disabled = true;
+  document.querySelectorAll('.rush-btn').forEach(b => b.disabled = true);
   try {
+    const body = { status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() };
+    if (rushNotitie) body.rush = rushNotitie;
     await fetch(
       `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`,
-      { method: 'PATCH', headers: HEADERS,
-        body: JSON.stringify({ status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() }) }
+      { method: 'PATCH', headers: HEADERS, body: JSON.stringify(body) }
     );
   } catch(e) { /* toon toch de bevestiging */ }
 
@@ -359,6 +409,7 @@ function reset() {
   el('klaarH2').style.display = 'none';
   el('klaarTekst').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
+  document.querySelectorAll('.rush-btn').forEach(b => b.disabled = false);
 }
 
 function escHtml(s) {
