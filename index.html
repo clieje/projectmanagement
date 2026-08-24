@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aanvraag — Clience</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap">
+<style>
+:root{
+  --black:#000000; --dark:#131313; --card:#1f1f1f; --line:#2c2c2c;
+  --grey:#818180;  --light:#efeeec; --white:#ffffff; --green:#0ba954;
+  --ease:cubic-bezier(.65,.05,0,1);
+  --f-text:"neue-haas-grotesk-text","DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-disp:"neue-haas-grotesk-display","DM Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{
+  min-height:100vh; background:var(--dark); color:var(--light);
+  font-family:var(--f-text); font-size:16px; line-height:1.5;
+  display:flex; flex-direction:column; align-items:center;
+  padding:48px 20px 72px;
+}
+.sheet{
+  width:100%; max-width:520px;
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:32px;
+}
+.top{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:13px; color:var(--grey); margin-bottom:36px;
+}
+.logo{font-family:var(--f-disp);color:var(--light);letter-spacing:-.01em;font-weight:500}
+.voor{font-size:13px;color:var(--grey);margin-bottom:6px}
+.titel{
+  font-family:var(--f-disp); font-size:24px; line-height:1.25;
+  font-weight:500; letter-spacing:-.02em; margin-bottom:28px; text-wrap:balance;
+}
+.sectie-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:10px}
+.werk{list-style:none;border-top:1px solid var(--line);padding-top:14px}
+.werk li{
+  display:flex;align-items:flex-start;gap:11px;
+  padding:9px 0;font-size:14px;color:var(--light);border-bottom:1px solid var(--line);
+}
+.werk li:last-child{border-bottom:none}
+.werk li::before{
+  content:'';width:4px;height:4px;border-radius:50%;
+  background:var(--grey);flex-shrink:0;margin-top:7px;
+}
+.rows{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;margin-bottom:20px}
+.row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:15px}
+.row dt{color:var(--grey)} .row dd{color:var(--light);font-variant-numeric:tabular-nums}
+.vergelijking{
+  background:var(--dark);border-radius:10px;padding:14px 16px;
+  margin-bottom:28px;font-size:14px;color:var(--grey);line-height:1.55;
+}
+.vergelijking b{color:var(--light);font-weight:500}
+.acties{display:flex;gap:10px;margin-bottom:16px}
+.acties button{
+  flex:1;padding:14px 12px;border-radius:10px;font:inherit;font-size:15px;cursor:pointer;
+  transition:background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease);
+}
+.ja{background:var(--light);color:var(--black);border:1px solid var(--light)}
+.ja:hover{background:var(--white)}
+.nee{background:none;color:var(--light);border:1px solid var(--line)}
+.nee:hover{border-color:var(--grey)}
+button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
+.geldig{font-size:12px;color:var(--grey)}
+.klaar{display:none} .klaar.actief{display:block}
+.sheet.afgerond .form{display:none}
+.stip{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
+.stip.groen{background:var(--green)} .stip.grijs{background:var(--grey)}
+.klaar h2{
+  font-family:var(--f-disp);font-size:20px;font-weight:500;
+  letter-spacing:-.02em;margin-bottom:10px;
+}
+.klaar p{font-size:15px;color:var(--grey);margin-bottom:24px;line-height:1.55}
+.terug{
+  background:none;border:none;color:var(--grey);font:inherit;font-size:13px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0;
+}
+.terug:hover{color:var(--light)}
+/* Loading / error */
+.laad{padding:40px 0;font-size:14px;color:var(--grey)}
+@media(max-width:520px){
+  .sheet{padding:24px 20px} .titel{font-size:21px} .acties{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<main class="sheet" id="sheet">
+
+  <!-- Loading -->
+  <div id="loadingView">
+    <div class="top"><div class="logo">Clience</div></div>
+    <p class="laad">Aanvraag laden…</p>
+  </div>
+
+  <!-- Error -->
+  <div id="errorView" style="display:none">
+    <div class="top"><div class="logo">Clience</div></div>
+    <h1 class="titel">Aanvraag niet gevonden</h1>
+    <p style="font-size:14px;color:var(--grey);line-height:1.6">
+      Deze link is verlopen of ongeldig.<br>
+      Neem contact op voor een nieuw voorstel.
+    </p>
+  </div>
+
+  <!-- Already responded -->
+  <div id="eerderView" style="display:none">
+    <div class="top"><div class="logo">Clience</div><div id="eerderNr"></div></div>
+    <div class="klaar actief">
+      <h2><span class="stip" id="eerderStip"></span><span id="eerderTitel"></span></h2>
+      <p id="eerderTekst"></p>
+    </div>
+  </div>
+
+  <!-- Proposal form -->
+  <div id="mainView" style="display:none">
+    <div class="form">
+      <div class="top">
+        <div class="logo">Clience</div>
+        <div id="aanvraagNr"></div>
+      </div>
+      <p class="voor" id="voor"></p>
+      <h1 class="titel" id="titel"></h1>
+      <p class="sectie-label" id="werkLabel" style="display:none">Werkzaamheden</p>
+      <ul class="werk" id="werk" style="display:none"></ul>
+      <dl class="rows">
+        <div class="row"><dt id="prijsLabel">Prijs</dt><dd id="prijs"></dd></div>
+        <div class="row" id="datumRij"><dt>Live op</dt><dd id="datum"></dd></div>
+      </dl>
+      <div class="vergelijking" id="vergelijking" style="display:none"></div>
+      <div class="acties">
+        <button type="button" class="ja"  id="ja">Goedkeuren</button>
+        <button type="button" class="nee" id="nee">Niet nu</button>
+      </div>
+      <p class="geldig" id="geldig" style="display:none"></p>
+    </div>
+
+    <div class="klaar" id="klaar">
+      <h2><span class="stip" id="stip"></span><span id="klaarTitel"></span></h2>
+      <p id="klaarTekst"></p>
+      <button type="button" class="terug" id="terug">Opnieuw bekijken</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const SB_URL = 'https://bmcrndoevdhtxlrrokru.supabase.co';
+const SB_KEY = 'sb_publishable_IfuIVIup7uSuIwA6rTid2A_yeEk1-Yz';
+const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+
+const el = id => document.getElementById(id);
+const sheet = el('sheet');
+let huidigToken = null;
+let huidigVariant = 'los';
+
+function showView(name) {
+  ['loadingView','errorView','eerderView','mainView'].forEach(v =>
+    el(v).style.display = v === name ? '' : 'none'
+  );
+}
+
+async function laadVoorstel() {
+  const token = new URLSearchParams(window.location.search).get('t');
+  if (!token) { showView('errorView'); return; }
+  huidigToken = token;
+
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(token)}&select=*&limit=1`,
+      { headers: HEADERS }
+    );
+    const [p] = await res.json();
+    if (!p) { showView('errorView'); return; }
+
+    if (p.status !== 'pending') {
+      renderEerder(p);
+      return;
+    }
+    renderVoorstel(p);
+  } catch(e) {
+    showView('errorView');
+  }
+}
+
+function renderVoorstel(p) {
+  const d = p.task_data;
+  document.title = `Aanvraag ${d.number || ''} — Clience`;
+
+  el('aanvraagNr').textContent  = `Aanvraag ${d.number || ''}`;
+  el('voor').textContent        = `Voor ${d.clientName || ''}`;
+  el('titel').textContent       = d.title || '';
+
+  // Werkzaamheden
+  const items = (d.items || []).filter(Boolean);
+  if (items.length) {
+    const werkEl = el('werk');
+    werkEl.innerHTML = items.map(i => `<li>${escHtml(i)}</li>`).join('');
+    el('werkLabel').style.display = '';
+    werkEl.style.display = '';
+  }
+
+  // Bepaal variant op basis van sla
+  const sla = d.sla;
+  if (!sla) {
+    huidigVariant = 'los';
+    el('prijsLabel').textContent = 'Prijs';
+    el('prijs').textContent      = d.prijs || '';
+    if (d.datum) el('datum').textContent = d.datum;
+    else el('datumRij').style.display = 'none';
+    if (d.vergelijking) {
+      el('vergelijking').innerHTML     = d.vergelijking;
+      el('vergelijking').style.display = '';
+    }
+    if (d.geldig) {
+      el('geldig').textContent     = d.geldig;
+      el('geldig').style.display   = '';
+    }
+  } else {
+    huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
+    el('prijsLabel').textContent = 'Kosten';
+    el('prijs').textContent      = d.creditPrijs || d.prijs || '';
+    if (d.datum) el('datum').textContent = d.datum;
+    else el('datumRij').style.display = 'none';
+    if (d.vergelijking) {
+      el('vergelijking').innerHTML     = d.vergelijking;
+      el('vergelijking').style.display = '';
+    }
+  }
+
+  showView('mainView');
+}
+
+function renderEerder(p) {
+  const d = p.task_data;
+  el('eerderNr').textContent = `Aanvraag ${d.number || ''}`;
+  const goedgekeurd = p.status === 'approved';
+  el('eerderStip').className   = 'stip ' + (goedgekeurd ? 'groen' : 'grijs');
+  el('eerderTitel').textContent = goedgekeurd ? 'Goedgekeurd' : 'Niet nu';
+  el('eerderTekst').textContent = goedgekeurd
+    ? 'Bedankt — ik ga ermee aan de slag.'
+    : 'Helder, ik laat het liggen. Stuur me een bericht als je het later toch wilt.';
+  showView('eerderView');
+}
+
+function goedTekst() {
+  if (huidigVariant === 'bereikbaar' || huidigVariant === 'support')
+    return 'Ik pak het op, morgen staat het live. Je ziet het terug in je maandoverzicht.';
+  return 'Ik heb het ingepland. Je hoort het van me zodra het live staat.';
+}
+
+async function afronden(soort) {
+  el('ja').disabled = el('nee').disabled = true;
+  try {
+    await fetch(
+      `${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(huidigToken)}`,
+      { method: 'PATCH', headers: HEADERS,
+        body: JSON.stringify({ status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() }) }
+    );
+  } catch(e) { /* toon toch de bevestiging */ }
+
+  el('stip').className    = 'stip ' + (soort === 'ja' ? 'groen' : 'grijs');
+  el('klaarTitel').textContent = soort === 'ja' ? 'Goedgekeurd' : 'Niet nu';
+  el('klaarTekst').textContent = soort === 'ja'
+    ? goedTekst()
+    : 'Helder, ik laat het liggen. Wil je het later toch, stuur me dan een bericht — dan kijk ik opnieuw naar de planning.';
+  sheet.classList.add('afgerond');
+  el('klaar').classList.add('actief');
+}
+
+function reset() {
+  sheet.classList.remove('afgerond');
+  el('klaar').classList.remove('actief');
+  el('ja').disabled = el('nee').disabled = false;
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+el('ja').addEventListener('click',   () => afronden('ja'));
+el('nee').addEventListener('click',  () => afronden('nee'));
+el('terug').addEventListener('click', reset);
+
+laadVoorstel();
+</script>
+</body>
+</html>
