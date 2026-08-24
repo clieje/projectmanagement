@@ -106,8 +106,18 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .rush-btn.actief{border-color:var(--light);background:rgba(255,255,255,.05)}
 .rush-btn .rush-titel{font-size:13px}
 .rush-toeslag{font-size:11px;color:var(--grey)}
-@media(max-width:520px){
-  .sheet{padding:24px 20px} .titel{font-size:21px} .acties{flex-direction:column}
+@media(max-width:600px){
+  body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  .sheet{padding:24px 20px}
+  .titel{font-size:21px}
+  .acties{
+    position:fixed;bottom:0;left:0;right:0;
+    flex-direction:row;
+    margin-bottom:0;
+    padding:12px 16px calc(env(safe-area-inset-bottom) + 12px);
+    background:linear-gradient(to bottom,transparent 0%,var(--dark) 30%);
+    z-index:100;
+  }
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
