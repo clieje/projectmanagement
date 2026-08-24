@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aanvraag — Clience</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><rect width='1' height='1' fill='%23000'/></svg>">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap">
 <style>
 :root{
@@ -177,11 +178,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       <ul class="werk" id="werk" style="display:none"></ul>
       <dl class="rows">
         <div class="row"><dt id="prijsLabel">Bedrag</dt><dd id="prijs"></dd></div>
+        <div style="padding:2px 0 6px;font-size:11px;color:var(--grey)">Exclusief btw</div>
       </dl>
       <div class="datum-balk" id="datumRij">
         <span>Datum oplevering</span><span id="datum"></span>
       </div>
-      <p style="font-size:11px;color:var(--grey);margin-bottom:20px">Prijzen zijn exclusief btw</p>
       <div class="vergelijking" id="vergelijking" style="display:none"></div>
       <div class="acties">
         <button type="button" class="nee" id="nee">Niet nu</button>
@@ -189,8 +190,12 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       </div>
       <p class="geldig" id="geldig" style="display:none"></p>
       <div class="rush-sectie" id="rushSectie">
-        <div class="rush-label">Sneller nodig?</div>
+        <div class="rush-label">Levertijd</div>
         <div class="rush-knoppen">
+          <button type="button" class="rush-btn actief" id="rushStd" onclick="kiesRush('std', this)">
+            <span class="rush-titel">Standaard</span>
+            <span class="rush-toeslag" id="rushStdDatum">Conform planning</span>
+          </button>
           <button type="button" class="rush-btn" onclick="kiesRush('3d', this)">
             <span class="rush-titel">Binnen 3 dagen</span>
             <span class="rush-toeslag">+50% toeslag</span>
@@ -227,8 +232,32 @@ const sheet = el('sheet');
 let huidigToken = null;
 let huidigVariant = 'los';
 let huidigDatum = null;
+let huidigDatumOrigineel = null;
 let huidigPrijsRaw = null;
 let huidigRush = null;
+
+const MAANDEN = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+function parseDatumNL(s) {
+  if (!s) return null;
+  const parts = (s+'').trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const dag = parseInt(parts[0]);
+  const mIdx = MAANDEN.indexOf(parts[1].toLowerCase());
+  if (isNaN(dag) || mIdx < 0) return null;
+  const jaar = parts[2] ? parseInt(parts[2]) : new Date().getFullYear();
+  return new Date(jaar, mIdx, dag);
+}
+function datumMetCountdown(s) {
+  if (!s) return s;
+  const d = parseDatumNL(s);
+  if (!d) return s;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff < 0)   return s;
+  if (diff === 0) return s + ' · vandaag';
+  if (diff === 1) return s + ' · morgen';
+  return s + ' · over ' + diff + ' dagen';
+}
 
 function parsePrijs(raw) {
   let s = (raw+'').replace(/[€\s]/g,'');
@@ -288,7 +317,9 @@ function renderVoorstel(p) {
   el('voor').textContent        = `Voor ${d.clientName || ''}`;
   el('titel').textContent       = d.title || '';
   huidigDatum = d.datum || null;
+  huidigDatumOrigineel = d.datum || null;
   huidigRush = null;
+  if (el('rushStdDatum')) el('rushStdDatum').textContent = d.datum || 'Conform planning';
   const rawVal = parsePrijs(d.prijs || d.creditPrijs || '');
   huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
   if (d.description) {
@@ -327,7 +358,7 @@ function renderVoorstel(p) {
     huidigVariant = 'los';
     el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.prijs);
-    if (d.datum) el('datum').textContent = d.datum;
+    if (d.datum) el('datum').textContent = datumMetCountdown(d.datum);
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
       el('vergelijking').innerHTML     = d.vergelijking;
@@ -341,7 +372,7 @@ function renderVoorstel(p) {
     huidigVariant = sla === 'plus' ? 'support' : 'bereikbaar';
     el('prijsLabel').textContent = 'Bedrag';
     el('prijs').textContent      = formatPrijs(d.creditPrijs || d.prijs);
-    if (d.datum) el('datum').textContent = d.datum;
+    if (d.datum) el('datum').textContent = datumMetCountdown(d.datum);
     else el('datumRij').style.display = 'none';
     if (d.vergelijking) {
       el('vergelijking').innerHTML     = d.vergelijking;
@@ -371,13 +402,25 @@ function goedTekst() {
 }
 
 function kiesRush(tier, btn) {
-  const multiplier = tier === '3d' ? 1.5 : 2.0;
-  const label      = tier === '3d' ? 'Binnen 3 werkdagen' : 'Binnen 24 uur';
-  const toeslag    = tier === '3d' ? '50%' : '100%';
-
   document.querySelectorAll('.rush-btn').forEach(b => b.classList.remove('actief'));
   if (btn) btn.classList.add('actief');
 
+  if (tier === 'std') {
+    if (huidigPrijsRaw) el('prijs').textContent = formatPrijs(String(huidigPrijsRaw));
+    if (huidigDatumOrigineel) {
+      el('datum').textContent = datumMetCountdown(huidigDatumOrigineel);
+      el('datumRij').style.display = '';
+    } else {
+      el('datumRij').style.display = 'none';
+    }
+    huidigDatum = huidigDatumOrigineel;
+    huidigRush = null;
+    return;
+  }
+
+  const multiplier = tier === '3d' ? 1.5 : 2.0;
+  const label      = tier === '3d' ? 'Binnen 3 werkdagen' : 'Binnen 24 uur';
+  const toeslag    = tier === '3d' ? '50%' : '100%';
   if (huidigPrijsRaw) {
     el('prijs').textContent = formatPrijs(String(huidigPrijsRaw * multiplier));
   }
@@ -435,6 +478,8 @@ function reset() {
   el('klaarTekst').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
   document.querySelectorAll('.rush-btn').forEach(b => { b.disabled = false; b.classList.remove('actief'); });
+  const rushStd = document.getElementById('rushStd');
+  if (rushStd) rushStd.classList.add('actief');
   huidigRush = null;
 }
 
