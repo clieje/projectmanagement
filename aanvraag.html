@@ -518,12 +518,9 @@ async function afronden(soort) {
   try {
     const patchBody = { status: soort === 'ja' ? 'approved' : 'declined', responded_at: new Date().toISOString() };
     if (soort === 'ja' && huidigNaam) patchBody.respondent_name = huidigNaam;
+    if (soort === 'ja' && huidigRush) patchBody.rush = huidigRush;
     await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(patchBody) });
   } catch(e) { /* toon toch de bevestiging */ }
-  if (soort === 'ja' && huidigRush) {
-    try { await fetch(url, { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ rush: huidigRush }) }); }
-    catch(e) {}
-  }
 
   if (soort === 'ja') {
     const now = new Date();
