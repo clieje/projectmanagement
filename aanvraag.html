@@ -77,7 +77,8 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .klaar{display:none} .klaar.actief{display:block}
 .sheet.afgerond .form{display:none}
 .stip{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
-.stip.groen{background:var(--green)} .stip.grijs{background:var(--grey)}
+.stip.groen{background:var(--green)} .stip.grijs{background:var(--grey)} .stip.oranje{background:#f7820a}
+.vervallen-box{background:rgba(247,130,10,.1);border:1px solid rgba(247,130,10,.35);border-radius:10px;padding:14px 16px;font-size:14px;color:#f7a060;line-height:1.55;margin-bottom:20px}
 .klaar h2{
   font-family:var(--f-disp);font-size:20px;font-weight:500;
   letter-spacing:-.02em;margin-bottom:10px;
@@ -168,6 +169,9 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
     <div class="klaar actief">
       <h2><span class="stip" id="eerderStip"></span><span id="eerderTitel"></span></h2>
       <p id="eerderTekst"></p>
+      <div id="eerderVervallen" class="vervallen-box" style="display:none">
+        Deze aanvraag is vervallen. Neem contact op met Clience voor een nieuw voorstel.
+      </div>
       <div id="eerderDetail" class="klaar-samenvatting" style="display:none"></div>
     </div>
   </div>
@@ -444,9 +448,22 @@ function renderVoorstel(p) {
 function renderEerder(p) {
   const d = p.task_data;
   el('eerderNr').textContent = `Aanvraag ${d.number || ''}`;
+
+  if (p.status === 'replaced') {
+    el('eerderStip').className          = 'stip oranje';
+    el('eerderTitel').textContent       = 'Aanvraag vervallen';
+    el('eerderTekst').style.display     = 'none';
+    el('eerderVervallen').style.display = '';
+    el('eerderDetail').style.display    = 'none';
+    showView('eerderView');
+    return;
+  }
+
   const goedgekeurd = p.status === 'approved';
-  el('eerderStip').className   = 'stip ' + (goedgekeurd ? 'groen' : 'grijs');
-  el('eerderTitel').textContent = goedgekeurd ? 'Goedgekeurd' : 'Niet nu';
+  el('eerderStip').className          = 'stip ' + (goedgekeurd ? 'groen' : 'grijs');
+  el('eerderTitel').textContent       = goedgekeurd ? 'Goedgekeurd' : 'Niet nu';
+  el('eerderTekst').style.display     = '';
+  el('eerderVervallen').style.display = 'none';
   el('eerderTekst').textContent = goedgekeurd
     ? 'Bedankt — ik ga ermee aan de slag.'
     : 'Helder, ik laat het liggen. Stuur me een bericht als je het later toch wilt.';
