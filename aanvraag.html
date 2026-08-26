@@ -237,11 +237,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
             <span class="rush-titel">Standaard</span>
             <span class="rush-toeslag" id="rushStdDatum">Conform planning</span>
           </button>
-          <button type="button" class="rush-btn" onclick="kiesRush('3d', this)">
+          <button type="button" class="rush-btn" id="rush3d" onclick="kiesRush('3d', this)">
             <span class="rush-titel">Binnen 3 dagen</span>
             <span class="rush-toeslag">+50% toeslag</span>
           </button>
-          <button type="button" class="rush-btn" onclick="kiesRush('24u', this)">
+          <button type="button" class="rush-btn" id="rush24u" onclick="kiesRush('24u', this)">
             <span class="rush-titel">Binnen 24 uur</span>
             <span class="rush-toeslag">+100% toeslag</span>
           </button>
@@ -367,6 +367,10 @@ function renderVoorstel(p) {
   huidigDatumOrigineel = d.datum || null;
   huidigRush = null;
   if (el('rushStdDatum')) el('rushStdDatum').textContent = d.datum || 'Conform planning';
+  if (d.defaultRush && d.defaultRush !== 'std') {
+    const rushBtn = el('rush' + d.defaultRush);
+    if (rushBtn) kiesRush(d.defaultRush, rushBtn);
+  }
   const rawVal = parsePrijs(d.prijs || d.creditPrijs || '');
   huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
   if (d.description) {
