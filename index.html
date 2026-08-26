@@ -141,6 +141,18 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
   }
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{
+  body{background:#fff;color:#000;padding:24px;display:block}
+  .sheet{border:none;border-radius:0;padding:0;max-width:100%;background:#fff}
+  #loadingView,#errorView,#eerderView,#terug,#downloadBtn,.form{display:none!important}
+  .klaar{display:block!important}
+  #klaarBanner{print-color-adjust:exact;-webkit-print-color-adjust:exact;border-radius:8px}
+  .klaar-samenvatting{display:block!important}
+  .klaar p,.klaar h2{color:#000}
+  .klaar-sum-rij dt{color:#555}
+  .klaar-sum-rij dd{color:#000}
+  .klaar-werklist li{color:#555}
+}
 </style>
 </head>
 <body>
@@ -261,7 +273,10 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
       </div>
       <h2 id="klaarH2" style="display:none"><span class="stip" id="stip"></span><span id="klaarTitel"></span></h2>
       <p id="klaarTekst"></p>
-      <button type="button" class="terug" id="terug">Opnieuw bekijken</button>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="terug" id="terug">Opnieuw bekijken</button>
+        <button type="button" class="terug" id="downloadBtn" style="display:none" onclick="window.print()">Bevestiging opslaan als PDF</button>
+      </div>
       <div class="klaar-samenvatting" id="klaarSamenvatting" style="display:none"></div>
     </div>
   </div>
@@ -559,6 +574,7 @@ async function afronden(soort) {
     el('klaarH2').style.display = 'none';
     el('klaarTekst').textContent = 'Bedankt voor de opdracht. Wij zullen deze direct inplannen.';
     el('klaarTekst').style.display = '';
+    el('downloadBtn').style.display = '';
     renderKlaarSamenvatting();
   } else {
     el('stip').className = 'stip grijs';
@@ -579,6 +595,7 @@ function reset() {
   el('klaarH2').style.display = 'none';
   el('klaarTekst').style.display = '';
   el('klaarSamenvatting').style.display = 'none';
+  el('downloadBtn').style.display = 'none';
   el('naamWrap').style.display = 'none';
   el('actiesWrap').style.display = '';
   el('ja').disabled = el('nee').disabled = false;
