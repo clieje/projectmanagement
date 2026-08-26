@@ -449,7 +449,8 @@ function renderEerder(p) {
   const d = p.task_data;
   el('eerderNr').textContent = `Aanvraag ${d.number || ''}`;
 
-  if (p.status === 'replaced') {
+  const vervallen = p.status === 'declined' && !p.responded_at;
+  if (vervallen) {
     el('eerderStip').className          = 'stip oranje';
     el('eerderTitel').textContent       = 'Aanvraag vervallen';
     el('eerderTekst').style.display     = 'none';
