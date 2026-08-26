@@ -369,6 +369,10 @@ async function laadVoorstel() {
       return;
     }
     renderVoorstel(p);
+    // Track first view (fire-and-forget, only sets when null)
+    fetch(`${SB_URL}/rest/v1/proposals?token=eq.${encodeURIComponent(token)}&viewed_at=is.null`,
+      { method: 'PATCH', headers: HEADERS, body: JSON.stringify({ viewed_at: new Date().toISOString() }) }
+    ).catch(() => {});
   } catch(e) {
     showView('errorView');
   }
