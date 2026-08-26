@@ -77,7 +77,8 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
 .klaar{display:none} .klaar.actief{display:block}
 .sheet.afgerond .form{display:none}
 .stip{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
-.stip.groen{background:var(--green)} .stip.grijs{background:var(--grey)}
+.stip.groen{background:var(--green)} .stip.grijs{background:var(--grey)} .stip.oranje{background:#f7820a}
+.vervallen-box{background:rgba(247,130,10,.1);border:1px solid rgba(247,130,10,.35);border-radius:10px;padding:14px 16px;font-size:14px;color:#f7a060;line-height:1.55;margin-bottom:20px}
 .klaar h2{
   font-family:var(--f-disp);font-size:20px;font-weight:500;
   letter-spacing:-.02em;margin-bottom:10px;
@@ -165,6 +166,9 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
     <div class="klaar actief">
       <h2><span class="stip" id="eerderStip"></span><span id="eerderTitel"></span></h2>
       <p id="eerderTekst"></p>
+      <div id="eerderVervallen" class="vervallen-box" style="display:none">
+        Deze aanvraag is vervallen. Neem contact op met Clience voor een nieuw voorstel.
+      </div>
     </div>
   </div>
 
@@ -231,11 +235,11 @@ button:focus-visible{outline:2px solid var(--light);outline-offset:2px}
             <span class="rush-titel">Standaard</span>
             <span class="rush-toeslag" id="rushStdDatum">Conform planning</span>
           </button>
-          <button type="button" class="rush-btn" onclick="kiesRush('3d', this)">
+          <button type="button" class="rush-btn" id="rush3d" onclick="kiesRush('3d', this)">
             <span class="rush-titel">Binnen 3 dagen</span>
             <span class="rush-toeslag">+50% toeslag</span>
           </button>
-          <button type="button" class="rush-btn" onclick="kiesRush('24u', this)">
+          <button type="button" class="rush-btn" id="rush24u" onclick="kiesRush('24u', this)">
             <span class="rush-titel">Binnen 24 uur</span>
             <span class="rush-toeslag">+100% toeslag</span>
           </button>
@@ -361,6 +365,10 @@ function renderVoorstel(p) {
   huidigDatumOrigineel = d.datum || null;
   huidigRush = null;
   if (el('rushStdDatum')) el('rushStdDatum').textContent = d.datum || 'Conform planning';
+  if (d.defaultRush && d.defaultRush !== 'std') {
+    const rushBtn = el('rush' + d.defaultRush);
+    if (rushBtn) kiesRush(d.defaultRush, rushBtn);
+  }
   const rawVal = parsePrijs(d.prijs || d.creditPrijs || '');
   huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
   if (d.description) {
@@ -427,9 +435,22 @@ function renderVoorstel(p) {
 function renderEerder(p) {
   const d = p.task_data;
   el('eerderNr').textContent = `Aanvraag ${d.number || ''}`;
+
+  const vervallen = p.status === 'declined' && !p.responded_at;
+  if (vervallen) {
+    el('eerderStip').className          = 'stip oranje';
+    el('eerderTitel').textContent       = 'Aanvraag vervallen';
+    el('eerderTekst').style.display     = 'none';
+    el('eerderVervallen').style.display = '';
+    showView('eerderView');
+    return;
+  }
+
   const goedgekeurd = p.status === 'approved';
-  el('eerderStip').className   = 'stip ' + (goedgekeurd ? 'groen' : 'grijs');
-  el('eerderTitel').textContent = goedgekeurd ? 'Goedgekeurd' : 'Niet nu';
+  el('eerderStip').className          = 'stip ' + (goedgekeurd ? 'groen' : 'grijs');
+  el('eerderTitel').textContent       = goedgekeurd ? 'Goedgekeurd' : 'Niet nu';
+  el('eerderTekst').style.display     = '';
+  if (el('eerderVervallen')) el('eerderVervallen').style.display = 'none';
   el('eerderTekst').textContent = goedgekeurd
     ? 'Bedankt — ik ga ermee aan de slag.'
     : 'Helder, ik laat het liggen. Stuur me een bericht als je het later toch wilt.';
