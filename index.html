@@ -38,20 +38,43 @@ body{
   font-weight:500; letter-spacing:-.02em; margin-bottom:28px; text-wrap:balance;
 }
 .sectie-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:10px}
-.werk{list-style:none;border-top:1px solid var(--line);padding-top:14px}
-.werk li{
+.werk{list-style:none;border-top:1px solid var(--line);padding-top:0;padding-left:0;margin:0}
+/* Flat items (no sections) */
+.werk li.flat-item{
   display:flex;align-items:flex-start;gap:11px;justify-content:space-between;
   padding:9px 0;font-size:14px;color:var(--light);border-bottom:1px solid var(--line);
 }
-.werk li:last-child{border-bottom:none}
-.werk li::before{
+.werk li.flat-item:last-child{border-bottom:none}
+.werk li.flat-item::before{
   content:'';width:4px;height:4px;border-radius:50%;
   background:var(--grey);flex-shrink:0;margin-top:7px;
 }
-.werk li.sectie{padding:10px 0 4px;border-bottom:1px solid var(--line);display:block}
-.werk li.sectie::before{display:none}
-.werk li.sectie:last-child{border-bottom:none}
-.werk li.sub{padding-left:10px}
+/* Section blocks */
+.werk li.sectie-blok{list-style:none;display:block;padding:0;border-bottom:1px solid var(--line)}
+.werk li.sectie-blok:last-child{border-bottom:none}
+.werk li.sectie-blok::before{display:none}
+.werk li.sectie-blok details summary{
+  list-style:none;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:10px;
+  padding:14px 0 12px;
+}
+.werk li.sectie-blok details summary::-webkit-details-marker{display:none}
+.sectie-naam{flex:1;font-size:15px;font-weight:500;color:var(--light)}
+.sectie-prijs{font-size:15px;font-variant-numeric:tabular-nums;color:var(--light);white-space:nowrap}
+.sectie-chevron{color:var(--grey);font-size:11px;flex-shrink:0;transition:transform .15s}
+details[open] .sectie-chevron{transform:rotate(180deg)}
+.sectie-desc{font-size:13px;color:var(--grey);line-height:1.55;padding-bottom:12px}
+/* Sub-items inside a section */
+.sectie-subs{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.sectie-subs li{
+  display:flex;align-items:flex-start;gap:10px;justify-content:space-between;
+  padding:8px 0;font-size:13px;color:var(--grey);border-bottom:1px solid var(--line);
+}
+.sectie-subs li:last-child{border-bottom:none}
+.sectie-subs li::before{
+  content:'';width:3px;height:3px;border-radius:50%;
+  background:var(--grey);flex-shrink:0;margin-top:6px;opacity:.5;
+}
 .rows{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;margin-bottom:10px}
 .row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:15px}
 .row dt{color:var(--grey)} .row dd{color:var(--light);font-variant-numeric:tabular-nums}
@@ -401,50 +424,79 @@ function renderVoorstel(p) {
   const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
   if (items.length) {
     const hasGroups = items.some(i => typeof i === 'object' && i.isGroup);
-
-    // Pre-compute section totals from sub-items when section has no own price
-    const sectionTotals = {};
-    let grpIdx = -1;
-    items.forEach((item, idx) => {
-      const isGroup = typeof item === 'object' && item.isGroup;
-      if (isGroup) {
-        grpIdx = idx;
-        const hasOwnPrice = !!(item.price && item.price.trim());
-        if (!hasOwnPrice) sectionTotals[idx] = 0;
-      } else if (grpIdx >= 0 && grpIdx in sectionTotals) {
-        const p = typeof item === 'object' && item.price ? parsePrijs(item.price) : NaN;
-        if (!isNaN(p)) sectionTotals[grpIdx] += p;
-      }
-    });
-
     const werkEl = el('werk');
-    let curGroupHasPrice = false;
-    let curGroupIdx = -1;
-    werkEl.innerHTML = items.map((i, idx) => {
-      const isGroup = typeof i === 'object' && i.isGroup;
-      const text    = typeof i === 'string' ? i : i.text;
-      const desc    = typeof i === 'object' ? (i.description || null) : null;
-      const price   = typeof i === 'object' && i.price ? i.price : null;
-      if (isGroup) {
-        curGroupIdx = idx;
-        curGroupHasPrice = !!(price && price.trim());
-        const displayTotal = curGroupHasPrice
-          ? formatPrijs(price)
-          : (sectionTotals[idx] > 0 ? formatPrijs(String(sectionTotals[idx])) : null);
-        return `<li class="sectie">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
-            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey)">${escHtml(text)}</span>
-            ${displayTotal ? `<span style="font-size:14px;font-variant-numeric:tabular-nums;color:var(--light);white-space:nowrap">${escHtml(displayTotal)}</span>` : ''}
-          </div>
-          ${desc ? `<div style="font-size:13px;color:var(--grey);line-height:1.5;margin-top:4px">${escHtml(desc)}</div>` : ''}
+
+    if (!hasGroups) {
+      // Flat list — no sections
+      const hasPrices = items.some(i => typeof i === 'object' && i.price);
+      werkEl.innerHTML = items.map(i => {
+        const text  = typeof i === 'string' ? i : i.text;
+        const price = typeof i === 'object' && i.price ? i.price : null;
+        return `<li class="flat-item">
+          <span style="flex:1">${escHtml(text)}</span>
+          ${price ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : ''}
         </li>`;
-      }
-      const showItemPrice = !curGroupHasPrice && price;
-      return `<li${hasGroups ? ' class="sub"' : ''}>
-        <span style="flex:1">${escHtml(text)}</span>
-        ${showItemPrice ? `<span style="font-variant-numeric:tabular-nums;color:var(--light);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : ''}
-      </li>`;
-    }).join('');
+      }).join('');
+    } else {
+      // Group items into sections
+      const groups = [];
+      let cur = null;
+      items.forEach(item => {
+        if (typeof item === 'object' && item.isGroup) {
+          cur = { hdr: item, subs: [] };
+          groups.push(cur);
+        } else {
+          if (!cur) { cur = { hdr: null, subs: [] }; groups.push(cur); }
+          cur.subs.push(item);
+        }
+      });
+
+      werkEl.innerHTML = groups.map(g => {
+        const ownHasPrice = g.hdr && g.hdr.price && g.hdr.price.trim();
+        // Compute totaal uit sub-items als sectie geen eigen prijs heeft
+        let sectieTotal = null;
+        if (g.hdr) {
+          if (ownHasPrice) {
+            sectieTotal = formatPrijs(g.hdr.price);
+          } else {
+            let sum = 0, any = false;
+            g.subs.forEach(s => {
+              const p = parsePrijs(typeof s === 'object' && s.price ? s.price : '');
+              if (!isNaN(p)) { sum += p; any = true; }
+            });
+            if (any) sectieTotal = formatPrijs(String(sum));
+          }
+        }
+
+        const subHtml = g.subs.map(s => {
+          const text  = typeof s === 'string' ? s : s.text;
+          const price = typeof s === 'object' && s.price ? s.price : null;
+          const showPrice = !ownHasPrice && price;
+          return `<li>
+            <span style="flex:1">${escHtml(text)}</span>
+            ${showPrice ? `<span style="font-variant-numeric:tabular-nums;white-space:nowrap">${escHtml(formatPrijs(price))}</span>` : ''}
+          </li>`;
+        }).join('');
+
+        if (!g.hdr) {
+          return `<li class="sectie-blok" style="border-top:none"><ul class="sectie-subs" style="border-top:none">${subHtml}</ul></li>`;
+        }
+
+        const desc = g.hdr.description || null;
+        return `<li class="sectie-blok">
+          <details open>
+            <summary>
+              <span class="sectie-naam">${escHtml(g.hdr.text)}</span>
+              ${sectieTotal ? `<span class="sectie-prijs">${escHtml(sectieTotal)}</span>` : ''}
+              <span class="sectie-chevron">▾</span>
+            </summary>
+            ${desc ? `<div class="sectie-desc">${escHtml(desc)}</div>` : ''}
+            ${subHtml ? `<ul class="sectie-subs">${subHtml}</ul>` : ''}
+          </details>
+        </li>`;
+      }).join('');
+    }
+
     el('werkLabel').style.display = '';
     werkEl.style.display = '';
   }
