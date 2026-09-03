@@ -48,6 +48,10 @@ body{
   content:'';width:4px;height:4px;border-radius:50%;
   background:var(--grey);flex-shrink:0;margin-top:7px;
 }
+.werk li.sectie{padding:10px 0 4px;border-bottom:1px solid var(--line);display:block}
+.werk li.sectie::before{display:none}
+.werk li.sectie:last-child{border-bottom:none}
+.werk li.sub{padding-left:10px}
 .rows{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;margin-bottom:10px}
 .row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:15px}
 .row dt{color:var(--grey)} .row dd{color:var(--light);font-variant-numeric:tabular-nums}
@@ -375,6 +379,9 @@ function renderVoorstel(p) {
     const rushBtn = el('rush' + d.defaultRush);
     if (rushBtn) kiesRush(d.defaultRush, rushBtn);
   }
+  // Rush section visibility
+  const rushSectie = el('rushSectie');
+  if (rushSectie) rushSectie.style.display = d.showRush === false ? 'none' : '';
   const rawVal = parsePrijs(d.prijs || d.creditPrijs || '');
   huidigPrijsRaw = isNaN(rawVal) ? null : rawVal;
   if (d.description) {
@@ -393,14 +400,29 @@ function renderVoorstel(p) {
   // Werkzaamheden
   const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
   if (items.length) {
-    const hasPrices = items.some(i => typeof i === 'object' && i.price);
+    const hasGroups = items.some(i => typeof i === 'object' && i.isGroup);
+    const hasPrices = items.some(i => typeof i === 'object' && i.price && !i.isGroup);
     const werkEl = el('werk');
+    let curGroupHasPrice = false;
     werkEl.innerHTML = items.map(i => {
-      const text  = typeof i === 'string' ? i : i.text;
-      const price = typeof i === 'object' && i.price ? i.price : null;
-      return `<li>
+      const isGroup = typeof i === 'object' && i.isGroup;
+      const text    = typeof i === 'string' ? i : i.text;
+      const desc    = typeof i === 'object' ? (i.description || null) : null;
+      const price   = typeof i === 'object' && i.price ? i.price : null;
+      if (isGroup) {
+        curGroupHasPrice = !!(price && price.trim());
+        return `<li class="sectie">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey)">${escHtml(text)}</span>
+            ${curGroupHasPrice ? `<span style="font-size:14px;font-variant-numeric:tabular-nums;color:var(--light)">${escHtml(formatPrijs(price))}</span>` : ''}
+          </div>
+          ${desc ? `<div style="font-size:13px;color:var(--grey);line-height:1.5;margin-top:3px">${escHtml(desc)}</div>` : ''}
+        </li>`;
+      }
+      const showItemPrice = !curGroupHasPrice && price;
+      return `<li${hasGroups ? ' class="sub"' : ''}>
         <span style="flex:1">${escHtml(text)}</span>
-        ${hasPrices && price ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : hasPrices ? `<span style="color:var(--line)">—</span>` : ''}
+        ${showItemPrice ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : hasPrices && !curGroupHasPrice ? `<span style="color:var(--line)">—</span>` : ''}
       </li>`;
     }).join('');
     el('werkLabel').style.display = '';
@@ -481,8 +503,10 @@ function renderEerderDetail(p) {
   if (items.length) {
     html += '<ul class="klaar-werklist">';
     html += items.map(i => {
+      const isGroup = typeof i === 'object' && i.isGroup;
       const text = typeof i === 'string' ? i : i.text;
-      return `<li>${escHtml(text)}</li>`;
+      if (isGroup) return `<li style="list-style:none;padding:8px 0 2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);border-top:1px solid var(--line)">${escHtml(text)}</li>`;
+      return `<li style="${items.some(x=>x.isGroup)?'padding-left:8px':''}">${escHtml(text)}</li>`;
     }).join('');
     html += '</ul>';
   }
@@ -608,7 +632,12 @@ function renderKlaarSamenvatting() {
   if (items.length) {
     html += '<p style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin-bottom:8px">Werkzaamheden</p>';
     html += '<ul class="klaar-werklist">';
-    html += items.map(i => '<li>' + escHtml(typeof i === 'string' ? i : i.text) + '</li>').join('');
+    html += items.map(i => {
+      const isGroup = typeof i === 'object' && i.isGroup;
+      const text = typeof i === 'string' ? i : i.text;
+      if (isGroup) return `<li style="list-style:none;padding:8px 0 2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);border-top:1px solid var(--line)">${escHtml(text)}</li>`;
+      return `<li style="${items.some(x=>x.isGroup)?'padding-left:8px':''}">${escHtml(text)}</li>`;
+    }).join('');
     html += '</ul>';
   }
 
