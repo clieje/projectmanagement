@@ -381,6 +381,9 @@ async function laadVoorstel() {
       return;
     }
     renderVoorstel(p);
+    fetch(`${SB_URL}/rest/v1/rpc/mark_proposal_viewed`,
+      { method: 'POST', headers: HEADERS, body: JSON.stringify({ p_token: token }) }
+    ).catch(() => {});
   } catch(e) {
     showView('errorView');
   }
