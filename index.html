@@ -484,7 +484,7 @@ function renderVoorstel(p) {
 
         const desc = g.hdr.description || null;
         return `<li class="sectie-blok">
-          <details open>
+          <details>
             <summary>
               <span class="sectie-naam">${escHtml(g.hdr.text)}</span>
               ${sectieTotal ? `<span class="sectie-prijs">${escHtml(sectieTotal)}</span>` : ''}
