@@ -401,28 +401,48 @@ function renderVoorstel(p) {
   const items = (d.items || []).filter(i => i && (typeof i === 'string' ? i : i.text));
   if (items.length) {
     const hasGroups = items.some(i => typeof i === 'object' && i.isGroup);
-    const hasPrices = items.some(i => typeof i === 'object' && i.price && !i.isGroup);
+
+    // Pre-compute section totals from sub-items when section has no own price
+    const sectionTotals = {};
+    let grpIdx = -1;
+    items.forEach((item, idx) => {
+      const isGroup = typeof item === 'object' && item.isGroup;
+      if (isGroup) {
+        grpIdx = idx;
+        const hasOwnPrice = !!(item.price && item.price.trim());
+        if (!hasOwnPrice) sectionTotals[idx] = 0;
+      } else if (grpIdx >= 0 && grpIdx in sectionTotals) {
+        const p = typeof item === 'object' && item.price ? parsePrijs(item.price) : NaN;
+        if (!isNaN(p)) sectionTotals[grpIdx] += p;
+      }
+    });
+
     const werkEl = el('werk');
     let curGroupHasPrice = false;
-    werkEl.innerHTML = items.map(i => {
+    let curGroupIdx = -1;
+    werkEl.innerHTML = items.map((i, idx) => {
       const isGroup = typeof i === 'object' && i.isGroup;
       const text    = typeof i === 'string' ? i : i.text;
       const desc    = typeof i === 'object' ? (i.description || null) : null;
       const price   = typeof i === 'object' && i.price ? i.price : null;
       if (isGroup) {
+        curGroupIdx = idx;
         curGroupHasPrice = !!(price && price.trim());
+        const displayTotal = curGroupHasPrice
+          ? formatPrijs(price)
+          : (sectionTotals[idx] > 0 ? formatPrijs(String(sectionTotals[idx])) : null);
         return `<li class="sectie">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
             <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey)">${escHtml(text)}</span>
-            ${curGroupHasPrice ? `<span style="font-size:14px;font-variant-numeric:tabular-nums;color:var(--light)">${escHtml(formatPrijs(price))}</span>` : ''}
+            ${displayTotal ? `<span style="font-size:14px;font-variant-numeric:tabular-nums;color:var(--light);white-space:nowrap">${escHtml(displayTotal)}</span>` : ''}
           </div>
-          ${desc ? `<div style="font-size:13px;color:var(--grey);line-height:1.5;margin-top:3px">${escHtml(desc)}</div>` : ''}
+          ${desc ? `<div style="font-size:13px;color:var(--grey);line-height:1.5;margin-top:4px">${escHtml(desc)}</div>` : ''}
         </li>`;
       }
       const showItemPrice = !curGroupHasPrice && price;
       return `<li${hasGroups ? ' class="sub"' : ''}>
         <span style="flex:1">${escHtml(text)}</span>
-        ${showItemPrice ? `<span style="font-variant-numeric:tabular-nums;color:var(--grey);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : hasPrices && !curGroupHasPrice ? `<span style="color:var(--line)">—</span>` : ''}
+        ${showItemPrice ? `<span style="font-variant-numeric:tabular-nums;color:var(--light);flex-shrink:0">${escHtml(formatPrijs(price))}</span>` : ''}
       </li>`;
     }).join('');
     el('werkLabel').style.display = '';
